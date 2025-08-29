@@ -161,3 +161,27 @@ async function main() {
 ```
 
 Then it tells "sorry I cannot tell you personal information about you".
+
+### automatic chat context history storing
+```js
+
+const chat = ai.chats.create({
+  model: "gemini-2.5-flash",
+  history: [],
+});
+
+async function main() {
+  while (true) {
+    const userProblem = readlineSync.question("Ask me anything---> ");
+    const response = await chat.sendMessage({
+      message: userProblem,
+    });
+    console.log(response.text);
+  }
+}
+
+main();
+```
+**Manual approach**: You explicitly push/pop messages to a visible history array in your RAM and send it to Google's API with each request.
+
+**Automatic approach**: The library invisibly maintains an identical history array in your RAM and sends the same complete conversation context to Google's API - zero difference except array visibility. Both approaches store history only locally in your RAM, never in the LLM or on Google's servers.
