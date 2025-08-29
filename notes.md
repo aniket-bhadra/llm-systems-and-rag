@@ -111,3 +111,53 @@ Similarly, when you ask "What's the temperature in Mumbai today?", the LLM doesn
 ## The Core Truth
 
 A pure LLM model can only give you answers by prediction, and it predicts based on the data it was trained on. Everything else requires external tools and integrations.
+
+### Context
+
+Pure LLM models do not store data, so whatever we give as input for them is context. So if I tell "my name is Virat", then in the next question I ask "what is my name", it does not store that information - it will reply "I don't know". But if I would have "I'm Virat, tell me my name" so now it can say that because for it this is its context - the input is its context.
+
+But when we chat with LLMs inside chatboxes, in that case whatever we ask, behind the scenes the chatbox takes all the previous questions and responses in that chatbox and inserts it to the model with the current question I ask, so that model actually gets the context of whatever we are conversing. So now the LLM model can identify the whole pattern and generate the next words based on that context perfectly.
+
+Like this way it can perfectly tell what is my name.
+
+```javascript
+async function main() {
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: [
+      {
+        role: "user",
+        parts: [{ text: "hi, I'm Virat" }],
+      },
+      {
+        role: "model",
+        parts: [{ text: "Hi Virat! It's nice to meet you." }],
+      },
+      {
+        role: "user",
+        parts: [{ text: "can you tell me my name" }],
+      },
+    ],
+  });
+  console.log(response.text);
+}
+```
+
+But if we omit the context part:
+
+```javascript
+async function main() {
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: [
+      {
+        role: "user",
+        parts: [{ text: "can you tell me my name" }],
+      },
+    ],
+  });
+  console.log(response.text);
+}
+```
+
+Then it tells "sorry I cannot tell you personal information about you".
