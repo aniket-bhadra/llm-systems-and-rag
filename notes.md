@@ -185,3 +185,37 @@ main();
 **Manual approach**: You explicitly push/pop messages to a visible history array in your RAM and send it to Google's API with each request.
 
 **Automatic approach**: The library invisibly maintains an identical history array in your RAM and sends the same complete conversation context to Google's API - zero difference except array visibility. Both approaches store history only locally in your RAM, never in the LLM or on Google's servers.
+
+### image generation
+When we generateContent it directly returns the response with multiple candidate responses based on the prompt. We just take the first one (index 0) since it's usually the best response. Then since each candidate can have text + image data (not always both), we check for text data if it exist then log or view it, then we process the image data if it exists.
+Each candidate doesn't always have both text+image - it can have either text, image, or both depending on what the AI generates. That's why we check if (part.text) and if (part.inlineData) separately.
+
+- image processing part
+generateContent directly returns the image (no streaming) in base64 text string. We convert base64 text string to binary data (which actually stores the image colors, pixels, etc.) with the Buffer object. Then we write that binary data to a new .png file (not empty - we're creating it). Since binary data has all the image information, when we write to file with .png extension, it automatically becomes that image, which we can open, edit, do anything with it.
+
+and When you send an image to the API, it also needs to be sent as a base64 text string.
+You convert: Image file → base64 string → send to API
+API returns: base64 string → convert back to binary → save as image file
+
+```js
+async function main() {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+  const prompt = "Create a picture of a logo written hungrydip";
+
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash-image-preview",
+    contents: prompt,
+  });
+  for (const part of response.candidates[0].content.parts) {
+    if (part.text) {
+      console.log(part.text);
+    } else if (part.inlineData) {
+      const imageData = part.inlineData.data;
+      const buffer = Buffer.from(imageData, "base64");
+      fs.writeFileSync("logo.png", buffer);
+      console.log("Image saved as logo.png");
+    }
+  }
+}
+```
