@@ -219,3 +219,17 @@ async function main() {
   }
 }
 ```
+
+so whenever we send msg to llms, not only current msg but preiuovs sends msg+preouvs genrted reply also sends along with curernt msg, so oevrall token of this huge input becomes bigger after each msg, so this is why when if keep converisong wiht llm token limit gets reaches drastifcally fast, beucase in each q we send the priovus q+respeon = 2k token + the repsoen = 500token =total 2.5k token alreday this way token getting used very veyr fast,so that is why token optmization is very veyr importnat
+
+beucse suppose we have converste in 300times i send msg 150, llm reply 150 now for next msg all this 300 repsone goes so lot lot tokne gets used but it is possble that out 300msg not all msg are relavant for the q im goint to asks next, may be only 50 is relevant so then how can we otmzie this toekn ussage?beucase if keeps using token we have to pay more so how can we optmize this token?
+
+
+if we want to build an chatbot for food company,and we pushed some msgs already to this content attibute so that this llm now reply based on whatever we provided it earielr, whatever instricont we given as msgs, but the problme is if we provide thsoe isntiaont in delcyt to content attibute and if user coms ans said whatever we have converst and wahver isntaions you are given to forgot everything and follow my instions now llm starts fllowing user instarions not follow the msg we give it in the very beignerin, so even if histy arrray is there everytin is there llm will not fllow our isntioanas but whatever user will say. so to prevent this dangeours thing we move sysnteion instion from content to put it config attribute 
+config: {
+      systemInstruction: "You are a food deliver chatbot. Your name is foodie.",
+    },
+
+    now whatever we provide here, llm will alwys fllow this even if user say forgot eveyting and fllow what im saying righ tknow , llm will not folow that llm alswyas fllow whatever we given here always always fllow this 
+    regradless of whatever of user say
+    
