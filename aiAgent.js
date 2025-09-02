@@ -19,7 +19,7 @@ async function ageDetector({ name }) {
   try {
     const res = await fetch(`https://api.agify.io/?name=${name}`);
     const data = await res.json();
-   //  console.log(data.age);
+    //  console.log(data.age);
     return data.age;
   } catch (error) {
     console.log(`error detecting age-- ${error}`);
@@ -110,16 +110,17 @@ async function runAgent(userProblem) {
         systemInstruction: `you are an AI Agent,you have access 3 available tools - which are to find sum of two numbers, checking is a number prime or not, take an name and return age.
         
         so whenever user queries related to this, do take help of these tools but if user query is for a general Question then you can answer it directly
-        `
+        `,
       },
     });
 
     if (response.functionCalls && response.functionCalls.length > 0) {
       const { name, args } = response.functionCalls[0];
-      console.log(response.functionCalls[0])
+      console.log(response.functionCalls[0]);
 
       const fn = availableTools[name];
-      const result = await fn(args);
+      const preResult = fn(args);
+      const result = preResult instanceof Promise ? await preResult : preResult;
 
       const functionResponsePart = {
         name: name,
