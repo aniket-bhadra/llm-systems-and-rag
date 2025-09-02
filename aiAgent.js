@@ -1,0 +1,164 @@
+import "dotenv/config";
+import { GoogleGenAI } from "@google/genai";
+import readlineSync from "readline-sync";
+
+function sum({ num1, num2 }) {
+  return num1 + num2;
+}
+
+function isPrime({ num }) {
+  for (let i = 2; i <= Math.sqrt(num); i++) {
+    if (num % i === 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
+async function ageDetector({ name }) {
+  try {
+    const res = await fetch(`https://api.agify.io/?name=${name}`);
+    const data = await res.json();
+   //  console.log(data.age);
+    return data.age;
+  } catch (error) {
+    console.log(`error detecting age-- ${error}`);
+  }
+}
+
+// console.log(ageDetector("robin"));
+
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+const history = [];
+
+const sumDeclaration = {
+  name: "sum",
+  description: "get the sum of 2 numbers",
+  parameters: {
+    type: "OBJECT",
+    properties: {
+      num1: {
+        type: "NUMBER",
+        description: "it will be first number for sum ex:10",
+      },
+      num2: {
+        type: "NUMBER",
+        description: "it will be second number for sum ex:7",
+      },
+    },
+    required: ["num1", "num2"],
+  },
+};
+
+const isPrimeDeclaration = {
+  name: "isPrime",
+  description: "check if the number prime or not",
+  parameters: {
+    type: "OBJECT",
+    properties: {
+      num: {
+        type: "NUMBER",
+        description: "it will be the number to find prime or not ex:7",
+      },
+    },
+    required: ["num"],
+  },
+};
+
+const ageDetectorDeclaration = {
+  name: "ageDetector",
+  description: "return age based on the name we provide",
+  parameters: {
+    type: "OBJECT",
+    properties: {
+      name: {
+        type: "STRING",
+        description: "it will be the name to find the age ex: rohit",
+      },
+    },
+    required: ["name"],
+  },
+};
+
+const availableTools = {
+  sum,
+  isPrime,
+  ageDetector,
+};
+
+async function runAgent(userProblem) {
+  history.push({
+    role: "user",
+    parts: [{ text: userProblem }],
+  });
+
+  while (true) {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: history,
+      config: {
+        tools: [
+          {
+            functionDeclarations: [
+              sumDeclaration,
+              isPrimeDeclaration,
+              ageDetectorDeclaration,
+            ],
+          },
+        ],
+        systemInstruction: `you are an AI Agent,you have access 3 available tools - which are to find sum of two numbers, checking is a number prime or not, take an name and return age.
+        
+        so whenever user queries related to this, do take help of these tools but if user query is for a general Question then you can answer it directly
+        `
+      },
+    });
+
+    if (response.functionCalls && response.functionCalls.length > 0) {
+      const { name, args } = response.functionCalls[0];
+      console.log(response.functionCalls[0])
+
+      const fn = availableTools[name];
+      const result = await fn(args);
+
+      const functionResponsePart = {
+        name: name,
+        response: {
+          result: result,
+        },
+      };
+
+      history.push({
+        role: "model",
+        parts: [
+          {
+            functionCall: response.functionCalls[0],
+          },
+        ],
+      });
+      history.push({
+        role: "user",
+        parts: [
+          {
+            functionResponse: functionResponsePart,
+          },
+        ],
+      });
+    } else {
+      history.push({
+        role: "model",
+        parts: [{ text: response.text }],
+      });
+      console.log(response.text);
+      break;
+    }
+  }
+}
+
+async function main() {
+  while (true) {
+    const userProblem = readlineSync.question("Ask me anything---> ");
+    await runAgent(userProblem);
+  }
+}
+main();
