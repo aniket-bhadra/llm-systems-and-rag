@@ -111,9 +111,13 @@ For questions it wasn't trained on, it can only identify patterns and predict ba
 
 ## External Tools for Complex Tasks
 
-For complex calculations, LLMs generate code to solve the problem. But since they can't run code themselves, they send this code to external tools. The external tool runs the code, gets the answer, and sends it back to the model, which then gives you the result.
+For complex calculations, LLMs **can** generate code and send it to external execution environments **if code execution tools are available** (like ChatGPT's Code Interpreter). Even for simple large number addition like `5441234354611 + 4745614414`, they will write Python code and execute it externally to get accurate results. **Without these tools, LLMs just predict answers based on patterns and often get them wrong.**
 
-Similarly, when you ask "What's the temperature in Mumbai today?", the LLM doesn't have this real-time data from its training. So it uses external tools that actually know Mumbai's current temperature, gets that information, and returns it to you.
+LLMs only use external tools when **we explicitly provide and configure them**. The LLM converts user input to structured data, passes it to the specific tool, gets the result, and displays it.
+
+For real-time data like "What's the temperature in Mumbai today?", LLMs use external tools **only if developers have specifically built and connected those tools** to the system.
+
+**Key point:** LLMs don't automatically have external tools - they must be explicitly provided by developers.
 
 ## The Core Truth
 
@@ -283,3 +287,51 @@ main();
 But whatever prompt or however long you provide the system instructions, those instructions are also passed to the LLM model with every question you ask internally. It sends: all the chat history until now (if history array is maintained manually or auto) + the system instructions + current question - all of this gets merged and sent to the LLM model every time you ask something.
 
 The system instructions don't get "remembered" by the model - they need to be included in every API call along with the conversation history and your current message. This is why system instructions also contribute to your token usage on every request.
+
+### AI Agent
+
+User gives input "2 se 7 ka add karke de" to server. Server doesn't know what this input means. Server has functions like add, getThePriceBitcoin, isThisPrime but doesn't know which function to call or what to pass. So it forwards this input to LLM.
+
+LLM takes the input, understands what user wants, gives proper formatting like:
+```
+{
+  function: "add",
+  args: [2, 7]
+}
+```
+
+This formatted structure comes to server. Now server knows which function to call and what to pass. But LLM cannot call functions directly - server actually calls the function with proper input.
+
+**Complete Flow:**
+User asks "5 and 7 ka sum kya hai" → server sends to LLM → LLM formats it and sends back to server → server calls that function, gets result → sends to LLM → LLM formats result to user language "12 hai re" → server sends final response to user.
+
+**Note:** We tell LLM beforehand "we have these tools, if any request comes related to that, forward to us, if not". LLM has information about available tools, not the actual code.
+
+So AI agent is **LLM + external tools** (functions).
+
+precisely
+ai agent = llm + external fn call + planning (llm makes/revises action sequence to achieve user goal) + memory (short-term context + long-term from vector db)
+
+**Example:** If I ask LLM to "post 'hi guys' on my Instagram", LLM understands the query, formats it and replies "user wants to call postInstaFn with username, password arguments". Server's function performs the actual posting and replies "done". LLM then responds in user done.
+
+**How server determines LLM's intent:**
+When LLM sends response, server checks:
+- `response.functionCall` exists? → call the function
+- Doesn't exist? → extract `response.text` and show to user
+
+In the code, we keep sending the entire conversation history (user messages + model responses + function calls + function results) to the LLM until the LLM finally sends us a response.text without any functionCall. Only then do we break out of the while loop and show the final response to the user.
+The history keeps growing with each iteration until LLM decides it has enough information to give a final text response.
+
+
+### advanced Ai Agent
+Server has function which takes input as argument and executes on terminal. **We must tell LLM in systemInstruction: "You are website builder, you have a function which takes 1 command and executes it, so whenever user wants you to build website, give one by one commands to that function."**
+
+**Flow:**
+User input "build course selling website" → Server → LLM (understands user wants website, knows it has terminal execution function) → LLM sends formatted request to Server "call terminalExec function with `mkdir course-website`" → Server executes command → Returns result to LLM → **All history (user problem + current fn call + current fn call result) goes back to LLM** → LLM asks for next command `touch index.html` → Server executes → This repeats until **LLM sends final response.text without any function call** → User gets completed website.
+
+**Key difference:** Unlike before when we manually wrote code and asked LLM which function to call, **now with 1 terminal execution function, LLM can understand user request + write code + execute everything automatically.**
+
+**Diagram:**
+```
+User → Server → LLM → terminalExec(command) → Result+History → LLM → Next terminalExec(command) → Result+History → ... → Final response.text → User
+```
