@@ -597,3 +597,70 @@ From Amazon's recommendations to YouTube's search to ChatGPT's memory - vector d
 **Example:** Pinecone might use IVF for clustering + PQ for compression. Your ChatGPT plugin queries get clustered by topic, then compressed vectors within relevant clusters are searched.
 
 ---
+
+### 5. **In Your Favorite Apps Right Now:**
+
+**Netflix:** "Because you watched..." uses clustering + compression
+**Amazon:** "Customers who bought this also bought" uses HNSW navigation
+**YouTube:** Video recommendations use hybrid IVF+PQ approaches  
+**Uber Eats:** "Similar restaurants" uses vector clustering
+**LinkedIn:** "People you may know" uses HNSW-style navigation
+**TikTok:** "For You" algorithm uses compressed vector similarity
+
+---
+
+### 6. **LLM & AI Applications:**
+
+**ChatGPT/GPT-4:** RAG systems use HNSW for document retrieval
+**Anthropic Claude:** Knowledge base queries use vector similarity  
+**GitHub Copilot:** Code similarity matching uses compressed embeddings
+
+**The Pattern:** Every modern recommendation, search, or similarity system uses these exact algorithms under the hood!
+
+These algorithms (IVF, HNSW, PQ, KD-Tree) are general-purpose vector similarity search algorithms that:
+
+CAN be used by vector databases as their internal search engines
+CAN also be used separately without any vector database at all
+
+Large Tech Companies (Spotify, Google, Facebook, Netflix):
+
+Build custom implementations of these algorithms
+Integrate directly into their existing infrastructure
+Don't use external vector databases
+
+Smaller Companies/Startups:
+
+Use vector databases (Pinecone, Weaviate, Chroma) that have these algorithms built-in
+More cost-effective than building from scratch
+
+So to answer your question directly:
+
+Spotify, Google, Facebook = Custom algorithm implementations (no vector DB)
+Most other companies = Use vector databases that contain these algorithms
+
+The algorithms are the same, but the deployment method is different!RetryClaude can make mistakes. Please double-check cited sources.
+
+**Large tech companies DO use PostgreSQL and MongoDB for traditional data storage, BUT they build custom vector similarity search systems instead of using dedicated vector databases** - because vector search is so performance-critical and integrated into their core algorithms that they prefer custom solutions over third-party vector databases.while smaller companies use dedicated vector databases.
+
+ when you ask an LLM "what is database?", it answers from its trained neural network weights (learned during training), NOT from a vector database - LLMs only use vector databases for RAG when they need to retrieve external documents they weren't trained on.
+**each vector database typically uses 1-2 of these algorithms, not all 4** - for example, Weaviate uses HNSW, Pinecone uses IVF+PQ hybrid, and Chroma uses HNSW, because different algorithms have different trade-offs between speed, accuracy, and memory usage.
+
+vector db does not store only the vectors embeddings they store:
+
+my_id = "product_456"
+my_vector = [0.98, 0.23, -0.11, ...]
+my_metadata = {
+    "product_name": "Red Running Shoes", 
+    "price": 89.99
+}
+
+metadata means data about the data
+id = to find exact match (in vector db not only we can find similar but also find exact match) and when we try to find exact match then we dont use those algos we use btrees or b+trees just like normal dbs
+
+sql, nosql is used for scenario - find user profile "dev watson", find comment "i want to buy it" (exact)
+
+vector db used for scenario - find user profile similar to "dev watson", find "i want to buy it", "im thinking to buy", "i will purchase it", "im interested in buying"
+
+
+ you need to compress vectors based on how many total vectors you're storing and how much storage space/budget you have available it not about the how many dimentions its about how much sapce is left against how many vectorr needs store.
+ and Vector databases automatically compress them using built-in algorithms like PQ (Product Quantization), scalar quantization, or binary quantization - you just configure which compression method you want, you don't manually compress each vector.
