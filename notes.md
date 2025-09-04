@@ -400,3 +400,27 @@ When you search "system design":
 4. Returns: "What is System Design?", "Top 50 System Design Questions", etc.
 
 **No database scanning needed** - just vector similarity matching!
+
+## The Storage Question: Why Not SQL/NoSQL?
+
+- **SQL/NoSQL:** Designed for exact matches ("Find user ID = 123")
+- **Vector DB:** Designed for similarity ("Find concepts like this")
+
+It's like asking a librarian vs. asking a friend for book recommendations.
+
+## Where LLMs Use Vector Databases
+
+**Beyond RAG (Retrieval Augmented Generation):**
+- **Conversation Memory:** Your chat history could be stored as vectors to maintain context
+- **Long-term Memory:** Instead of temporary arrays, vectors capture conversation themes
+- **Semantic Search:** Finding related past conversations
+
+**Current Reality:** Most LLMs use temporary context windows, but vector storage for long-term memory is emerging.
+
+## The Speed Problem: Why Full Scans Are Too Slow
+
+**Exact Nearest Neighbor (ENN):** Perfect but painfully slow
+- Take vector [2,3], compare to every item: [4,5] → √((2-4)² + (3-5)²) = 2.83
+- With millions of products, this takes forever
+
+**Solution:** Approximate Nearest Neighbor (ANN) - sacrifice tiny accuracy for massive speed gains.
