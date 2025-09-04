@@ -522,8 +522,8 @@ When user searches with vector [1.5, 2.1, 0.8, 3.9], we compare this search vect
 Why not compress the search vector?
 
 Accuracy loss: Double compression (database + search) = too much error
-Speed: We only have 1 search vector vs millions in database
-Quality: Better to lose accuracy on storage than on the actual search
+Speed: You only compress once (the millions of database vectors), not every single search query.
+Quality: If you compress your search vector too, the similarity matching becomes less accurate because you're comparing "approximate vs approximate" instead of "exact search vs approximate database."
 
 ### The Hybrid Approach: Best of Both Worlds
 
@@ -583,8 +583,11 @@ From Amazon's recommendations to YouTube's search to ChatGPT's memory - vector d
 - **Microsoft Bing:** Image and text search compression
 - **OpenAI:** Embedding storage optimization
 - **Vector DBs that use it:** Faiss-based systems, some Pinecone configurations
+- **YouTube:** Video recommendation embeddings compression
+- **Instagram:** Photo similarity search with compressed vectors
+- **Uber:** Location-based service matching with compressed coordinates
 
-**Example:** Google compresses webpage embeddings using PQ. Instead of storing full vectors for billions of pages, they store compressed codes using 10-20x less memory.
+**Example:**  YouTube uses PQ to store compressed video embeddings so when you watch a cooking video, it can quickly find similar cooking content without storing massive vectors for millions of videos.
 
 ---
 
@@ -593,9 +596,14 @@ From Amazon's recommendations to YouTube's search to ChatGPT's memory - vector d
 - **Vector DBs:** Pinecone, Chroma, Qdrant (combine multiple algorithms)
 - **AI Applications:** ChatGPT's RAG systems, GitHub Copilot's code search
 - **Large-scale systems:** Any system handling millions+ vectors
+- **Amazon:** Product search (clusters by category + compresses product embeddings)
+- **Netflix:** Content recommendation (groups by genre + compresses user preference vectors)
+- **Dating apps:** Profile matching (clusters by location + compresses personality vectors)
+- **News apps:** Article recommendation (groups by topic + compresses article embeddings)
 
-**Example:** Pinecone might use IVF for clustering + PQ for compression. Your ChatGPT plugin queries get clustered by topic, then compressed vectors within relevant clusters are searched.
+**Example:**  Amazon uses IVF to group products by category (electronics, clothes, books) then PQ to compress product feature vectors, so when you search for "wireless headphones" it only searches within electronics cluster using compressed product data.
 
+in HNSW+PQ, each node's vector at every level is compressed using PQ, so instead of storing full vectors in the navigation layers, you store compressed codes which saves massive memory while still allowing approximate similarity comparisons during search.
 ---
 
 ### 5. **In Your Favorite Apps Right Now:**
@@ -643,6 +651,7 @@ The algorithms are the same, but the deployment method is different!RetryClaude 
 **Large tech companies DO use PostgreSQL and MongoDB for traditional data storage, BUT they build custom vector similarity search systems instead of using dedicated vector databases** - because vector search is so performance-critical and integrated into their core algorithms that they prefer custom solutions over third-party vector databases.while smaller companies use dedicated vector databases.
 
  when you ask an LLM "what is database?", it answers from its trained neural network weights (learned during training), NOT from a vector database - LLMs only use vector databases for RAG when they need to retrieve external documents they weren't trained on.
+
 **each vector database typically uses 1-2 of these algorithms, not all 4** - for example, Weaviate uses HNSW, Pinecone uses IVF+PQ hybrid, and Chroma uses HNSW, because different algorithms have different trade-offs between speed, accuracy, and memory usage.
 
 vector db does not store only the vectors embeddings they store:
@@ -661,6 +670,6 @@ sql, nosql is used for scenario - find user profile "dev watson", find comment "
 
 vector db used for scenario - find user profile similar to "dev watson", find "i want to buy it", "im thinking to buy", "i will purchase it", "im interested in buying"
 
-
- you need to compress vectors based on how many total vectors you're storing and how much storage space/budget you have available it not about the how many dimentions its about how much sapce is left against how many vectorr needs store.
- and Vector databases automatically compress them using built-in algorithms like PQ (Product Quantization), scalar quantization, or binary quantization - you just configure which compression method you want, you don't manually compress each vector.
+### if we have 1B vectors with multiple dimensions when and how we store or do we compress them to store that huge data?
+you need to compress vectors based on how many total vectors you're storing and how much storage space/budget you have available it not about the how many dimensions its about how much space is left against how many vector needs store.
+and Vector databases automatically compress them using built-in algorithms like PQ (Product Quantization), scalar quantization, or binary quantization - you just configure which compression method you want, you don't manually compress each vector.
