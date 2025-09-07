@@ -37,7 +37,7 @@ async function chatting(question) {
     model: "text-embedding-004",
   });
 
-  //since here we have 1 Q to convert to vector, instead of using langchain directly here we embedded, if there are multiples then we must use langchian or for loop
+  //since here we have 1 Q to convert to vector, instead of using langchain directly here we embedded, 
   const queryVector = await embeddings.embedQuery(query);
 
   //make connection with pinecone
