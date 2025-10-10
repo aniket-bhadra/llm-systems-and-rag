@@ -116,6 +116,7 @@ async function runAgent(userProblem) {
 
     if (response.functionCalls && response.functionCalls.length > 0) {
       const { name, args } = response.functionCalls[0];
+      // console.log(response.functionCalls);
       console.log(response.functionCalls[0]);
 
       const fn = availableTools[name];
@@ -163,3 +164,72 @@ async function main() {
   }
 }
 main();
+
+
+// --------------------------------------------notes--------------------
+
+// ## Where You Define the Structure:
+
+// ```javascript
+// const sumDeclaration = {
+//   name: "sum",                                     // 👈 YOU define the function name here
+//   description: "get the sum of 2 numbers",
+//   parameters: {
+//     type: "OBJECT",                                // 👈 Structure will be an OBJECT
+//     properties: {
+//       num1: {                                      // 👈 YOU define "num1" key here
+//         type: "NUMBER",
+//         description: "it will be first number for sum ex:10",
+//       },
+//       num2: {                                      // 👈 YOU define "num2" key here
+//         type: "NUMBER",
+//         description: "it will be second number for sum ex:7",
+//       },
+//     },
+//     required: ["num1", "num2"],
+//   },
+// };
+// ```
+
+// ## This Creates the Structure:
+
+// ```javascript
+// {
+//   name: "sum",     // ← From sumDeclaration.name
+//   args: {          // ← From parameters.type: "OBJECT"
+//     num1: 5,       // ← From properties.num1
+//     num2: 3        // ← From properties.num2
+//   }
+// }
+// ```
+
+// **So:**
+// - **Structure definition** = `sumDeclaration` (YOU write this)
+// - **Structure population** = AI fills in the values based on user query
+
+// The `sumDeclaration` is the **blueprint/template** that tells AI: "When you call this function, use this exact structure!" 🎯
+
+// -----------------------------------------------------
+
+// !! The Problem in the current code:
+// In the else block, the model might return:
+
+// Text parts
+// Thought signatures (reasoning process)
+// Other metadata or structured data
+
+// But we are only capturing text, so the warning says: "Hey, there are other non-text parts in the response that you're ignoring!"
+
+// else {
+//   const fullResponse = response.candidates?.[0]?.content || {
+//     parts: [{ text: response.text }]
+//   };
+  
+//   history.push({
+//     role: "model",
+//     parts: fullResponse.parts,  // ALL parts (text + non-text)
+//   });
+  
+//   console.log(response.text);
+//   break;
+// }

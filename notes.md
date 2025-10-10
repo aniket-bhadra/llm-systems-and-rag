@@ -1138,3 +1138,88 @@ This preprocessing step transforms the RAG pipeline from a simple search system 
 - **Answer Relevancy**: Does the answer actually address the question?
 
 Both cloud APIs (like Gemini) and local model deployment are used in real RAG systems - cloud APIs send your data to external servers (easy but privacy concerns), while local deployment keeps everything on your infrastructure (private but requires hardware/expertise). Financial/healthcare typically go local for compliance, startups often start with APIs. **The key insight: only the LLM execution location changes - your vector search, context retrieval, and prompt construction remain exactly the same!**
+
+
+
+### summary
+Vocabulary size:
+When the model was being built, the creators decided: "Our model will know these 50,000 specific text pieces."
+
+These 50,000 pieces are the vocabulary. It's a fixed list created before training starts
+ex-Token ID 0: "the" Token ID 1: "is" Token ID 2: "apple"
+So vocabulary size = 50,000 means this list has 50,000 entries.
+
+When designing this vocabulary of 50,000 tokens, they do it in a way that these 50,000 pieces can combine to represent ANY word in ANY language - even words that don't exist yet!
+How they achieve this:
+
+The vocabulary includes:
+Common whole words: "the", "is", "apple", "run"
+Common word pieces: "ing", "ed", "un", "tion", "ly"
+Individual characters: "a", "b", "c", "z", "æ", "ñ"
+Punctuation and symbols: ".", ",", "!", "@"
+
+So even if a rare word like "pneumonoultramicroscopicsilicovolcanoconiosis" is NOT in the vocabulary as one token, it can be broken into smaller pieces:
+"pneumonoultramicroscopicsilicovolcanoconiosis" → ["pne", "um", "ono", "ultra", "micro", "scop", "ic", "silic", "o", "volcan", "o", "con", "i", "osis"]
+Each piece exists in the vocabulary!
+
+This is why 50,000 tokens is enough - because:
+You get common words as single tokens (efficient)
+You can represent ANY word by combining pieces (flexible)
+You can even handle typos, new slang, made-up words, code, emojis - anything!
+
+Input: When we input to LLM, it tokenizes → vector embedding + positional encoding (which may be added once at the start or applied continuously through mechanisms like RoPE) → multi-head self-attention to capture context, then feed forward which transforms these vectors → more refined understanding. So, Feed Forward = Takes contextualized vector → passes through 2-layer neural network with learned weights → outputs refined vector. Now this process of multi-head self-attention → feed forward keeps continuing through multiple layers until we get a fully contextualized representation of input.
+
+Input: "The bank by the river" -->
+Layer 1: Self-Attention → Feed Forward (basic context) -->
+Layer 2: Self-Attention → Feed Forward (better context) -->
+Layer 3: Self-Attention → Feed Forward (deeper understanding) -->
+... (many more layers: 12–96 depending on model size) -->
+Layer N: Self-Attention → Feed Forward (very sophisticated understanding) -->
+Output: Fully contextualized representations
+
+
+Generation: Now all those other layers (embedding, multi-head self-attention, feed forward) are done processing. This "fully contextualized representation" now enters the final output layer (language modeling head/output projection) which takes this "fully contextualized representation vector" and multiplies it with its own set of learned parameters to map it to vocabulary size - meaning if your vocabulary has 50,000 tokens, this layer produces 50,000 raw scores (logits), one score for each possible token that could come next. These scores are produced by the final layer's parameters doing matrix multiplication with the contextualized representation. Higher score = model thinks that token is more likely to come next.
+
+The model has parameters (like 1.7 trillion in large models) which are decimal values distributed across all layers - embedding layers, attention layers, feed-forward layers, and this final output layer. Each layer has its own subset of these parameters doing specific jobs.
+
+Now these 1.7 trillion parameters are not assigned to specific words like "index" "purple" "collection" but these parameters are actual decimal values which started with random initialization (or sometimes smart initialization schemes). During training we process input through these parameters, get output, then calculate loss by comparing the predicted next token probabilities (computed for all vocabulary tokens) with the actual next token that should appear - the loss function only looks at the probability assigned to the correct next token. Based on that loss we do backpropagation and adjust each parameter's values so that next time the output should come closer to predicting the correct next token, and this way model gets trained and those parameter values keep getting adjusted and finally fine-tuned.
+
+Here the training data is billions of texts from the internet - the model learns by predicting the next token in sequences from this data. We feed the model billions of examples where it tries to predict "what comes next", and parameter values keep getting adjusted through gradient descent until it can actually process input and generate appropriate next tokens. The mathematical operations (matrix multiplication, linear transformations, attention, activations...) remain the same during training and inference.
+
+We process input through layers with parameters - but during training we adjust the parameter values based on the prediction loss using gradient descent, and during inference those values have become so intelligent after training - so fine-tuned, that during inference, input processed through these 1.7 trillion intelligent parameter values actually gives us good predictions for what should come next. This is how these numbers become the weights in the neural network. The operations stay the same (matrix multiplications, attention, activations), only the parameter values get smarter through training.
+
+
+So now in inference stage when user asks "what is array" it takes that input, does all the encoding + multi-head self-attention, feed forward through all layers, then enters the final output layer. This final output layer has its own learned parameters that multiply with the final contextualized vector to produce logits (raw scores) for every possible next token in the vocabulary.
+
+Now these generated logits produce scores for all tokens in the vocabulary (typically 30k-100k+ tokens depending on the tokenizer), not just a few. After computing these scores, softmax function converts these raw scores (logits) to proper probabilities that sum to 1, then sampling picks tokens based on these probabilities and temperature.
+
+We can control this token picking by adjusting the temperature parameter in LLMs:
+Low temperature (0.1): Makes the probability distribution sharper → almost always picks the highest probability token → predictable, consistent responses.
+High temperature (1.5): Flattens the probability distribution → sometimes picks lower probability tokens → creative, varied responses.
+Example with "I am feeling...":
+Low temp: Almost always picks "good" (0.8 probability).
+High temp: Might pick "tired" (0.4) or even "purple" (0.1) sometimes.
+Temperature controls randomness (low = predictable, high = creative).
+
+So the generated tokens are done by math - no database involved - it's just input processed through 1.7 trillion intelligent decimal values which are parameters → final output layer's parameters produce logits/probabilities, with no database retrieval during the actual generation. The token-to-text conversion (detokenization) uses a fixed vocabulary mapping (essentially a lookup table) to convert token IDs back to text pieces - this mapping is static and set during tokenizer creation, not a database query.
+
+
+And this way it keeps generating token by token, where each newly generated token gets appended to the input for predicting the next one (autoregressive generation), until the whole response generation is finished (usually when a special end-of-sequence token is generated or max length is reached).
+
+
+Disclaimer: This explanation captures the core mechanics of how LLMs work but simplifies some technical details. In practice, LLMs use various operations beyond matrix multiplication - attention mechanisms, layer normalization, various activation functions (GELU, SiLU), residual connections, and more. Modern training uses next-token prediction with cross-entropy loss, and often includes RLHF (reinforcement learning from human feedback) or other alignment techniques. The model predicts one token at a time during both training and inference by learning from billions of examples of "what comes next" in text sequences.
+
+The process works like: input → process through all layers → final output layer uses its parameters to produce raw scores (logits) for all vocabulary tokens → softmax (converts to probabilities) → sampling (picks token based on temperature and probabilities).
+
+The fundamental concept remains accurate: LLMs are mathematical systems that transform inputs using learned parameters distributed across many layers, not databases, and generate responses one token at a time incrementally.
+
+Simplified example:
+raw_scores = final_layer_output # logits [2.1, 1.8, 0.5, ...] for all vocab tokens
+probabilities = softmax(raw_scores) # [0.6, 0.3, 0.1, ...] (sums to 1)
+chosen_token = sample(probabilities, temperature=0.7)
+
+Training adjusts all parameters across all layers to both understand input (through embeddings, attention, feed-forward layers) and generate output (through the final output layer) - the same trained weights do both jobs throughout the entire process. The model learns understanding and generation together because predicting the next token correctly requires comprehending context and producing appropriate responses.
+The 1.7 trillion parameters aren't split into "understanding parameters" and "generation parameters" - they're distributed across all layers (embedding, attention, feed-forward, final output) and trained together to do both tasks simultaneously.
+
+
+
