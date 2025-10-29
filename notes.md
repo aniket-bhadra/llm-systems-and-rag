@@ -1309,3 +1309,176 @@ In simple terms: Each agent publishes what it can do (schema), and other agents 
 - **Maintainability**: Update individual agents independently
 - **Reliability**: Failure isolation prevents system-wide crashes
 
+what is context window?
+ **Context window** is the **maximum amount of text an LLM can process at once** - both input and output combined.
+- It's measured in **tokens** (roughly 0.75 words each)
+- Includes: system prompt + conversation history + current message + tool descriptions + response
+
+**Example:**
+- Claude 3.5 Sonnet has a **200K token context window**
+
+**What happens when you exceed it:**
+- Older messages get truncated/removed
+- The model "forgets" earlier conversation
+- Request fails if a single message is too large
+
+**Why it matters:**
+- Limits how much conversation history you can keep
+- Affects how many tool descriptions you can include
+- Determines how large documents you can process
+
+### installing Langchain
+Only installing langchain means we are installing everything in the LangChain ecosystem - A to Z, everything, even if everything is not needed. So in production, this heavy module becomes bloated because of large bundle size. So the best way is to only install what's needed separately as standalone packages, like `npm i @langchain/core @langchain/langgraph...` This way, only install what's needed. This is best for production since we are only installing what's needed, not everything.
+
+So when we need to install sub-packages like those, we have to use the `@` indicator, otherwise npm thinks this is a local file path on your computer like   `npm i /home/user/projects/my-lib`. These file paths are useful when you're developing a package locally and want to test it in another project before publishing. So without `@`, npm thinks that this is that file path, so to install sub-packages we must use `@`.
+
+## **LangChain**
+
+Suppose we are building an AI application where we will use multiple LLMs in different sections:
+- For taking user input and rephrasing it, we use OpenAI
+- To generate images if the user asks, we use Gemini
+- For code-related tasks, we use Claude
+- For deep analytical questions, we use DeepSeek
+
+To do that, we'd have to install all LLM SDKs separately - like `npm i` for OpenAI, `npm i` for Gemini, and call all of them separately since all of their API calling payloads are completely different. So we'd have to do that manually for all.
+
+**LangChain makes this API calling unified.** Instead of using all of these packages separately, we only install LangChain and import utility functions from there. By tweaking things, we can call all the LLMs. 
+
+And it also has some community packages which help us achieve tasks like:
+- PDF chunking
+- Storing each chunk to vector DB
+- Vector embedding
+
+All of this can be done by simple function calls. So LangChain also provides utility functions through which we can achieve all of this complex stuff with simple function calls, instead of writing all of these things from scratch. It would be very tedious since we can store in ChromaDB, Weaviate, Postgres vector DB - so for each DB we'd have to write functions manually. But LangChain gives us utility functions through which we can connect and store in any DB.
+
+
+## **LangGraph**
+
+When we make applications with AI and tool calling, the flow is dynamic. 
+
+For example, if we have 3 tools:
+1. Name to age detector
+2. Check if prime or not
+3. Addition
+
+**Scenario 1:** If a user comes and asks "What is Rohit's age and if we add Rohit's age + 8, is it prime?"
+
+The flow is decided by AI:
+1. Call age detector
+2. Call addition tool
+3. Call prime function tool
+
+**Scenario 2:** If a user asks "What is Rohit and Virat's age, and is the total prime?"
+
+Flow is:
+1. Age detector for Virat
+2. Age detector for Rohit
+3. Addition tool
+4. Prime tool
+
+So every time, based on user query, the flow is dynamic - we can't make it static. It can call any tool from anywhere, so it is forming a graph-like structure where each sub-task is a node. Like calling age detector for Virat is a node, calling age detector for Rohit is a separate node, and they're connected to each other.
+
+**To handle this flow, we use LangGraph.** In each node, we use LangChain to call APIs, but how the flow through each node keeps getting connected to other nodes is handled by LangGraph.
+
+---
+
+## **Global State in LangGraph**
+
+In LangGraph, there is a **global state**.
+
+When we build a graph with multiple nodes, each node:
+- Takes this state as input
+- Can modify this state
+
+And this way, at the end, the state holds the final output. t(he message array that we maintain with MessagesAnnotation in Graph API and the addMessages function in Functional API that is global state)
+
+---
+
+## **LangSmith**
+
+Now if we wanted to do something which always measures:
+- Whenever a user queries, which node gets called
+- What they replied
+- In which time the user query was resolved
+- Is the user satisfied
+
+To record all of these metrics data, we use **LangSmith**, so that in the future if anything breaks, we can see in LangSmith what went wrong since everything is getting recorded - every log is saved through LangSmith.
+
+LangSmith tracks everything in this flow, so we can see what went wrong and the performance. So LangSmith gives a detailed overview:
+- Which node gets called at which time with duration
+- How many tokens are used for each LLM call
+- How much budget is spent
+
+Everything in 1 dashboard! 
+
+To integrate LangSmith in a preexisting workflow with LangGraph, I just imported a few environment variables and it actually gets connected to the LangSmith dashboard. How??
+
+ LangChain, LangGraph, and LangSmith are all part of the same ecosystem. LangGraph automatically checks for LangSmith environment variables (LANGCHAIN_API_KEY, LANGCHAIN_TRACING_V2=true, etc.), and if found, it automatically sends traces to LangSmith. No extra code needed! 
+
+**What Zod Does:**
+
+Zod helps you create schemas. In those schemas, you can use `.min()`, `.max()`, `.email()`, `.positive()`, `.default()`, `.optional()` fields, and more. Zod helps you create schemas with all of these types. and When you create an object, Zod also helps you validate whether that object matches the schema or not.
+
+**In TypeScript:**
+
+Without Zod, we have to manually define types, and TypeScript only checks types at compile time. But with Zod, we define schemas once, and it checks types at compile time AND validates data at runtime too.
+
+```js
+import { z } from "zod";
+
+// 1. Define a schema
+const userSchema = z.object({
+  name: z.string(),
+  age: z.number().min(18),
+  email: z.string().email(),
+});
+
+// 2. Validate data
+const input = { name: "Aniket", age: 20, email: "aniket@test.com" };
+
+// ✅ If valid → parsed safely
+const user = userSchema.parse(input);
+console.log("Valid user:", user);
+
+// ❌ If invalid → throws an error
+try {
+  userSchema.parse({ name: "A", age: 15, email: "wrong" });
+} catch (err) {
+  console.log("Validation error:", err.errors);
+}
+```
+
+This means with Zod we get:
+- ✅ TypeScript type checking
+- ✅ Auto-complete
+- ✅ Error checking (at compile time)
+- ✅ Runtime data validation
+
+**So in short:** Zod = Schema definition + Compile-time types + Runtime validation, all from one schema! 
+
+**In LangGraph:**
+Zod is often used this way - to validate the structure of agent inputs, outputs, and state to ensure everything follows the predefined expected format.
+Here's the corrected note with the original tone preserved:
+
+---
+
+**But in the code, we only use Zod to define the schema in each tool's `schema` attribute. We never explicitly call Zod's `parse` method to check validation against the predefined schema. So what's the point of using Zod?**
+
+The validation **IS** happening, just not by you - it's done by LangChain/LangGraph automatically!
+
+When the LLM requests to use a tool (e.g., `add(3, 4)`), LangChain automatically validates the arguments against your Zod schema before executing the tool.
+
+So basically, when the `toolNode` gets a request from the LLM to use a tool, it internally uses the Zod schema to:
+
+- Validate the LLM's tool call arguments
+- Ensure `a` and `b` are numbers (not strings or null)
+- Throw errors if validation fails
+
+**We use Zod because of this auto-validation happening behind the scenes:**
+- **LLM guidance** - The schema tells the LLM what types to use
+- **Type safety** - If using TypeScript, you get type hints
+- **Error prevention** - Catches bad tool calls before they execute
+
+The schema is used internally by the library, so you don't need to manually call `.parse()`.
+
+LangChain primarily supports Zod for schema definition. While you could technically use other validation libraries (like Yup, Joi, or plain JSON Schema), LangChain's tooling and type inference work best with Zod. The ToolNode expects Zod schemas specifically for automatic validation and TypeScript type safety. So while not impossible to use alternatives, Zod is the officially recommended and best-supported option in the LangChain ecosystem.
