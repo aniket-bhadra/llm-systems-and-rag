@@ -265,6 +265,68 @@ console.log(result.messages);
 
 // So: role: "tool" = convention for tool results, not specific to ToolNode. So whether we use the prebuilt ToolNode or we manually do tool execution, for the results of tools we always put role: "tool"
 
+// role: "assistant"
+
+// Comes from LLM (the llmCall node)
+// This is the AI's response
+// Can contain text OR tool calls
+
+role: "tool"
+
+// Comes from ToolNode (after executing the tool)
+// Always contains the tool's return value
+
+// assistant = What the AI SAYS or REQUESTS
+// tool = What the tool RETURNS
+
+
+
+// result.messages is the EXACT same state.messages that LangGraph maintained throughout the entire workflow!When you do console.log(result.messages), you're seeing the complete conversation history that accumulated as the graph executed.
+
+// The messages array contains:
+// User message (your initial input)
+// Assistant message with tool call to add(3, 4)
+// Tool message with result 7
+// Assistant message with tool call to multiply(7, 10)
+// Tool message with result 70
+// Assistant message with tool call to divide(70, 2)
+// Tool message with result 35
+// Assistant message with tool call to add(35, 5)
+// Tool message with result 40
+// Assistant message with final answer "The answer is 40"
+
+
+// but then why it looks so complex?
+
+// console.log(result.messages);
+
+// This prints the raw message objects with:
+// All internal LangChain data structures
+
+// LangChain message objects contain:
+
+// id: Unique identifier
+// content: The actual message
+// additional_kwargs: Extra info from the LLM
+// response_metadata: Token usage, model info
+// tool_calls: Tool requests
+// usage_metadata: Billing/usage stats
+
+// You only need content and tool_calls for reading!
+
+// so we can do this
+
+// result.messages.forEach((msg, i) => {
+//   const type = msg._getType();
+//   const content = msg.content || JSON.stringify(msg.tool_calls);
+//   console.log(`${i + 1}. [${type}]: ${content}`);
+// });
+
+// OR
+
+// const finalAnswer = result.messages.at(-1);
+// console.log(finalAnswer.content);
+// Output: "The final result is 40."
 
 //imp Qs
 

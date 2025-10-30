@@ -1482,3 +1482,429 @@ So basically, when the `toolNode` gets a request from the LLM to use a tool, it 
 The schema is used internally by the library, so you don't need to manually call `.parse()`.
 
 LangChain primarily supports Zod for schema definition. While you could technically use other validation libraries (like Yup, Joi, or plain JSON Schema), LangChain's tooling and type inference work best with Zod. The ToolNode expects Zod schemas specifically for automatic validation and TypeScript type safety. So while not impossible to use alternatives, Zod is the officially recommended and best-supported option in the LangChain ecosystem.
+
+
+## **Memory Layer in AI Agents**
+
+When we call any LLM's API, that's always a **stateless call**.
+
+So whatever the user has said about himself in any chat needs to be sent every time with the user's next query. And this is the biggest problem because this growing list - with each message, the conversation keeps getting bigger.
+
+If we start sending the whole conversation with every message from the user, then:
+1. We **exceed the token limit faster**
+2. We have to **pay more**
+3. After a point, we also **exceed the context window limit** (which is how many tokens they can process at a time with input + output combined - like 128k or 1M tokens)
+
+So we will soon cross that limit also. And when it happens, the context window starts to **drop the initial messages** (oldest messages get pushed out). This way we start to **lose initial conversations**, and this way we start to **lose context**.
+
+And if the user needs to send his preferences every time he chats, this is also not a good thing. Then what to do???
+
+**This is why the memory layer is important!**
+
+---
+
+## **Solution: Memory Layer**
+
+Now what we can do is **extract very short, relevant, important things from each message** of the user and store it somewhere. So that when the user starts a new chat, we can send that stored info along with the user's query to the LLM. This way, the LLM knows about the user even if the user is in a new chat.
+
+**But wait...**
+
+Now if we start extracting relevant info from every message of the user, then after a point, this memory layer limit will also be exceeded. And if we have too much memory and the user asks a simple "hi", in that case also we end up sending this large memory with this message. So we again end up with unnecessarily higher token usage and exceeding the context window.
+
+---
+
+## **Types of Memory**
+
+Memory has **2 main types** that are mostly used:
+
+### **1. Short-Term Memory (STM)**
+
+**Definition:** Short-lived memory for a particular time or session. This enables an AI agent to remember recent inputs for immediate decision-making. This type of memory is useful in conversational AI, where maintaining context across multiple exchanges within the same session is required.
+
+**Example:**
+- User: "I want to order a burger"
+- User (2 mins later): "Actually, make that a large burger with extra cheese"
+- Agent remembers the burger order context within this session
+
+Another example:
+- User: "Rephrase the last note I provided you"
+- The agent needs STM to remember what the "last note" was
+
+**Real-world example:** ChatGPT retains chat history within a single session, helping to ensure smoother and more context-aware conversations.
+
+**Storage:** Typically stored in **buffer (RAM)** - temporary, fast access
+
+**Lifecycle:** Lives only during the current conversation/session. Once the session ends, STM is cleared.
+
+---
+
+### **2. Long-Term Memory (LTM)**
+
+**Definition:** This stays across chats. This persists after conversations end.
+
+**Example:** Username, birthday, food preferences
+
+**Storage:** Stored persistently in databases (not RAM)
+
+---
+
+## **Types of Long-Term Memory**
+
+LTM has **3 subtypes**:
+
+### **A. Factual Memory**
+
+**Definition:** Basic facts about the user - personal information that doesn't change often.
+
+**Examples:**
+- "My name is robin pandey"
+- "My birthday is on 1st Jan"
+- "I live in Mumbai"
+- "My email is robin@example.com"
+
+**Storage:** Stored in **relational databases** (PostgreSQL, MongoDB) or **vector databases**
+
+**Why relational DB works:** This is structured data with clear fields (name, birthday, location) that fits well in traditional database schemas.
+
+---
+
+### **B. Episodic Memory**
+
+**Definition:** Preferences, events, and experiences extracted from past interactions. These are contextual memories tied to specific events or patterns in the user's behavior.
+
+**Examples:**
+
+**Preference-based:**
+- "I'm a foodie who loves spicy food"
+- "I prefer vegetarian options"
+- "I usually order around 8 PM"
+
+**Event-based:**
+- Day 1: "I'm nervous about my job interview tomorrow."
+- Day 3: AI says, "I remember you mentioned an interview. How did it go?"
+
+**Pattern-based:**
+- "User has ordered pizza 5 times in the last month"
+- "User always asks for extra cheese"
+
+**Storage:** Stored in **vector databases** (for semantic search) and **logs** (for event tracking)
+
+**Why vector DB?** Because episodic memories need to be searched semantically. For example, if the user asks "What do I usually order for dinner?", the system needs to find similar past interactions, not exact matches.
+
+---
+
+### **C. Semantic Memory**
+
+**Definition:** General facts and knowledge **not tied to the user**. This is world knowledge, domain knowledge, or system knowledge that's universally true.
+
+**Examples:**
+- "Paris is the capital of France"
+- "Python is widely used in AI development"
+- "MongoDB works well with Node.js"
+- "Pizza typically contains cheese and tomato sauce"
+
+**Storage:** Stored in **vector databases** (for semantic retrieval) and **knowledge graphs** (for relationship mapping)
+
+---
+---
+
+### **Knowledge Graph for Semantic Memory**
+
+**What is a Knowledge Graph?**
+A knowledge graph stores information as **entities (nodes)** connected by **relationships (edges)**. This helps AI understand how concepts relate to each other.
+
+**Example Knowledge Graph:**
+
+```
+Python ──[widely used for]──> AI Development
+   |
+   └──[has library]──> TensorFlow
+   |
+   └──[has library]──> PyTorch
+
+MongoDB ──[works well with]──> Node.js
+   |
+   └──[is type of]──> NoSQL Database
+   |
+   └──[good for]──> Unstructured Data
+
+Pizza ──[contains]──> Cheese
+   |
+   └──[contains]──> Tomato Sauce
+   |
+   └──[popular topping]──> Pepperoni
+```
+
+**How it's used in practice:**
+Here's the tomato maggie soup example made more explicit like the MongoDB example:
+
+---
+
+**User asks:** "How to make tomato maggie soup?"
+
+### **Step 1: Vector DB Search**
+
+**What gets found (3 similar things):**
+1. **Document 1:** "Tomato corn soup recipe - Boil tomatoes with corn and spices"
+2. **Document 2:** "Classic tomato soup - Make tomato puree and simmer with herbs"
+3. **Document 3:** "Maggie noodles - Boil noodles in water for 2 minutes with masala"
+
+**Problem:** These are **similar** to the user's query, but they're **completely separated from each other**. Vector DB can't tell us **how to combine** them to answer "tomato **maggie** soup"!
+
+---
+
+### **Step 2: Entity Extraction from Documents**
+
+From Document 1: `Tomato`, `Corn`, `Soup`, `Boiling`, `Vegetables`, `Spices`
+From Document 2: `Tomato`, `Soup`, `Puree`, `Herbs`, `Simmering`
+From Document 3: `Maggie`, `Noodles`, `Boiling`, `Masala`, `Water`
+
+**Extracted entities:** `Tomato`, `Soup`, `Maggie`, `Noodles`, `Boiling`, `Vegetables`, `Spices`
+
+---
+
+### **Step 3: Knowledge Graph Traversal**
+
+Now the system queries the knowledge graph using the extracted entities to find **how they're connected**.
+
+**Query 1:** "How is Tomato Soup related to the cooking method?"
+```
+Tomato Soup ──[is type of]──> Soup
+Tomato Soup ──[main ingredient]──> Tomatoes
+Tomato Soup ──[cooking method]──> Boiling
+Tomato Soup ──[uses]──> Spices
+```
+**Insight:** Tomato soup has a **base recipe** using boiling and spices
+
+---
+
+**Query 2:** "How is Maggie related to soups?"
+```
+Maggie ──[is type of]──> Instant Noodles
+Maggie ──[cooking method]──> Boiling
+Maggie ──[can be added to]──> Soups
+Maggie ──[cooking time]──> 2-3 minutes
+Instant Noodles ──[pairs well with]──> Liquid-based dishes
+```
+**Insight:** Maggie **can be integrated into soups** and shares the same **boiling method**
+
+---
+
+**Query 3:** "What connects Tomatoes, Maggie, and Soup together?"
+```
+Tomatoes ──[pairs with]──> Noodles (in Asian fusion cuisine)
+Tomatoes ──[flavor profile]──> Tangy/Savory
+Noodles ──[absorbs]──> Soup flavors
+Soup ──[can contain]──> Noodles (like ramen, pho)
+Boiling ──[works for]──> Both Tomato Soup AND Maggie
+Vegetables ──[complement]──> Both Tomato dishes AND Noodle dishes
+```
+**Insight:** All three can be **combined** because they share compatible **cooking methods, flavor profiles, and culinary traditions**
+
+---
+
+### **Step 4: Reasoning & Synthesis**
+
+The system now **connects the dots** using both Vector DB results and Knowledge Graph relationships:
+
+**From Vector DB:** 
+- "Tomato soup uses boiling and spices" ✅
+- "Maggie noodles need boiling" ✅
+- "Corn can be added to tomato soup" ✅
+
+**From Knowledge Graph (the connections):**
+- Tomato soup's boiling method → Same as Maggie's cooking method (compatible techniques)
+- Maggie → Can be added to soups (culinary compatibility)
+- Tomatoes → Pair with noodles (flavor compatibility proven in Asian fusion)
+- Noodles → Absorb soup flavors (Maggie will soak up tomato flavor)
+
+---
+
+### **Step 5: Combined Result**
+
+**Final Answer Generated:**
+"To make **tomato maggie soup**, combine elements from all three recipes:
+
+1. **Base Recipe (from Tomato Soup):** Start by making a tomato soup base - boil 2-3 tomatoes with spices like pepper and salt
+
+2. **Noodle Integration (from Maggie Recipe):** Add Maggie noodles to the boiling tomato soup and cook for 2-3 minutes. The noodles will absorb the tangy tomato flavor
+
+3. **Enhancement (from Tomato Corn Soup):** Optional - add vegetables like corn or peas for extra texture and nutrition
+
+**Cooking Steps:**
+- Boil tomatoes with water and spices (5 mins)
+- Add Maggie noodles and masala packet (2 mins)
+- Add vegetables if desired (2 mins)
+- Serve hot"
+
+---
+
+### **Why Both Are Needed - Clear Example:**
+
+**Vector DB alone would return:**
+```
+"Here are three separate recipes: tomato soup, maggie preparation, and tomato corn soup."
+```
+❌ These are separate instructions with no clear way to combine them for "tomato maggie soup"!
+
+**Knowledge Graph alone would return:**
+```
+"Tomatoes connect to soups. Maggie connects to boiling. Soups can contain noodles."
+```
+❌ Too abstract, doesn't give actual cooking instructions!
+
+**Combined (Vector DB + Knowledge Graph):**
+```
+"Make tomato maggie soup by creating a tomato soup base (boil tomatoes with spices), then add Maggie noodles which will cook in the soup and absorb the tangy tomato flavor. Both use boiling, and noodles are known to pair well with tomato-based broths in fusion cuisine."
+```
+✅ Practical, connected recipe that directly answers the user's question with actual steps!
+
+---
+
+**The Magic:** 
+- **Vector DB** found 3 relevant recipes (similarity search)
+- **Knowledge Graph** explained **how to merge them** (relationship reasoning: same cooking method + culinary compatibility + flavor pairing)
+- Together they turned **3 separate recipes** into **1 coherent fusion recipe**! 
+
+---
+
+
+## **1. Is Knowledge Graph a database?**
+
+**YES!** A Knowledge Graph is stored in a specialized type of database called a **Graph Database**.
+- **Graph DB (Neo4j):** Stores data as nodes and edges (entities and relationships)
+
+## **2. When we use Vector DB in RAG, is Knowledge Graph already integrated?**
+
+**❌ NO! Knowledge Graph is NOT automatically integrated with Vector DB.**
+
+**Standard RAG setup (most common):**
+```
+User Query → Vector DB (similarity search) → Retrieved documents → LLM → Answer
+```
+
+**No Knowledge Graph involved in basic RAG!**
+
+**Advanced RAG setup (with Knowledge Graph):**
+```
+User Query → Vector DB (similarity search) → Retrieved documents
+           ↓
+    Extract entities → Query Knowledge Graph → Find relationships
+           ↓
+    Combine both → LLM → Enhanced Answer
+```
+
+**This is an EXTRA layer you add manually** - not built-in by default!
+
+**Vector DB ≠ includes Knowledge Graph automatically** - you must build the Knowledge Graph separately and integrate it
+**used for Advanced system ex- **
+- User: "How are Tesla's suppliers connected to SpaceX contractors?"
+- Needs Knowledge Graph to map complex relationships ✅
+
+
+---
+
+## **3. Vector DB + Knowledge Graph - Is this provided to LLM along with training data?**
+
+**❌ NO! This is NOT part of training data.**
+
+In RAG, we store data in **Vector DB**, and for advanced use cases, we can also use **Graph DB**.
+
+But **LLM itself does not use any Vector DB or Graph Database to generate answers**. It generates answers based on:
+1. Its **training data** (learned during pre-training)
+2. **Tools** it has access to (if provided)
+3. **Context** sent in the current request
+
+LLM does not store anything like Vector DB or Graph DB internally.
+
+**But when we build an agent or chatbot using an LLM**, then to make it a better user experience, we **store data separately** in:
+- Vector DB
+- Graph DB  
+- Relational DB
+
+Based on the user's query, we **fetch relevant data from these databases** and send it **along with the user query** to the LLM for better context, so that it can generate a better answer.
+
+**Summary:** LLM itself doesn't store external data. We use that setup (Vector DB + Graph DB + other databases) to **create better context** when we build agents using LLMs. The LLM still answers from the **context we provide** + its **training data** + **tools** it has access to. We use these databases **for agents**, not inside the LLM. 🎯
+
+---
+---
+---
+
+## **Example: User Message Processing**
+
+**User sends these messages:**
+
+```
+1. "My name is robin pandey"
+2. "I would like to order a burger"
+3. "My order number is 132. What is the status?"
+4. "BTW, my birthday is on 1st Jan"
+```
+
+**Memory Classification:**
+
+| Message Content | Memory Type | Reason |
+|----------------|-------------|---------|
+| Name: robin pandey | **Factual (LTM)** | Personal fact, doesn't change |
+| Birthday: 1st Jan | **Factual (LTM)** | Personal fact, doesn't change |
+| Order: burger | **STM** | Temporary, only relevant in current session |
+| Order number: 132 | **STM** | Temporary tracking number for this session |
+
+---
+
+## **What Gets Sent to the LLM?**
+
+Context window is limited, so we need to be strategic about what we send with each user message:
+
+### **Always Sent (Core Context):**
+1. **Current user message** (obviously!)
+2. **STM** - Recent conversation from current session
+3. **Factual memory (LTM)** - User's basic facts (name, birthday, etc.)
+
+**Why always send these?** They provide essential context without being too large.
+
+---
+
+### **Sent On-Demand (Smart Retrieval):**
+
+**Episodic Memory** - Fetched only when relevant!
+
+**Example:**
+
+**User query:** "I'm a foodie but have lots of protein, don't know what to order"
+
+**Agent's thought process:**
+1. Detects food-related query
+2. Searches episodic memory: "Does user have any food preferences from past interactions?"
+3. Finds: "User prefers vegetarian + loves spicy food + usually orders around 8 PM"
+4. Fetches this from the database
+5. Sends to LLM: **User message + STM + Factual memory + Relevant episodic memory**
+
+**Result:** Agent can suggest: "Based on your preference for vegetarian and spicy food, I recommend our Spicy Paneer Burger - high in protein too!"
+
+---
+
+### **Semantic Memory:**
+
+Generally **not sent directly** with every message. Instead:
+- Used during **RAG (Retrieval Augmented Generation)** when user asks knowledge questions
+- Retrieved from knowledge graph when reasoning about relationships is needed
+
+**Example:**
+- User: "What's good to eat in Paris?"
+- System retrieves from semantic memory: "Paris is capital of France" + "French cuisine includes croissants, baguettes"
+
+---
+
+## **Summary: Memory Strategy**
+
+| Memory Type | Sent Every Time? | Storage | Example |
+|-------------|------------------|---------|---------|
+| **STM** | ✅ Yes | RAM/Buffer | Recent conversation |
+| **Factual (LTM)** | ✅ Yes | Relational DB / Vector DB | Name, birthday |
+| **Episodic (LTM)** | ⚠️ On-demand only | Vector DB + Logs | Food preferences, past events |
+| **Semantic (LTM)** | ⚠️ On-demand only | Vector DB + Knowledge Graph | General world knowledge |
+
+**Goal:** Keep context window efficient while maintaining relevant memory! 
+
+---
