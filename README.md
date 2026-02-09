@@ -1,3 +1,115 @@
+# LLM Systems and RAG - Complete Guide
+
+## Table of Contents
+
+1. [How LLMs Actually Work](#how-llms-actually-work---a-clear-explanation)
+   - [LLMs Don't Store Exact Answers](#llms-dont-store-exact-answers)
+   - [Pattern Recognition, Not Database Matching](#pattern-recognition-not-database-matching)
+   - [How LLMs Generate Responses](#how-llms-generate-responses)
+   - [Tokenization: Converting Words to Numbers](#tokenization-converting-words-to-numbers)
+   - [The Prediction Process](#the-prediction-process)
+   - [Why It's Called "Generative AI"](#why-its-called-generative-ai)
+   - [Why Different Answers for the Same Question?](#why-different-answers-for-the-same-question)
+   - [Limitations: What LLMs Can and Cannot Do](#limitations-what-llms-can-and-cannot-do)
+   - [External Tools for Complex Tasks](#external-tools-for-complex-tasks)
+   - [The Core Truth](#the-core-truth)
+
+2. [Context in LLMs](#context)
+   - [Automatic Chat Context History Storing](#automatic-chat-context-history-storing)
+
+3. [What LLM Actually Means](#if-an-llm-is-a-prediction-engine-that-predicts-the-next-words-based-on-training-data-and-user-context-then-why-is-it-called-an-llm)
+   - [The Parameter Reality](#the-parameter-reality-what-those-trillion-numbers-actually-are)
+   - [The Two-Phase Process: Training vs Generation](#the-two-phase-process-training-vs-generation)
+   - [Why Training is Absolutely Essential](#why-training-is-absolutely-essential)
+   - [The Database Misconception](#the-database-misconception)
+   - [Why GPUs Are Essential for LLMs](#why-gpus-are-essential-for-llms)
+   - [The Computational Cost Reality](#the-computational-cost-reality)
+   - [The Core Insight](#the-core-insight)
+
+4. [Training vs Mathematical Calculations](#training-vs-mathematical-calculations)
+   - [How Training Changes What Numbers Math Uses](#how-training-changes-what-numbers-math-uses-complete-proof)
+   - [Side-by-Side Proof](#side-by-side-proof-same-math-different-numbers)
+   - [The Complete Proof](#the-complete-proof)
+   - [The Ultimate Truth](#the-ultimate-truth)
+
+5. [Image Generation](#image-generation)
+
+6. [Token Usage](#token-usage)
+
+7. [System Instructions](#system-instructions)
+
+8. [AI Agent](#ai-agent)
+   - [Advanced AI Agent](#advanced-ai-agent)
+
+9. [Vector Databases](#vector-databases)
+   - [The Problem That Started It All](#the-problem-that-started-it-all)
+   - [Why Vector Databases Were Born](#why-vector-databases-were-born)
+   - [Enter Vector Embeddings: The Breakthrough](#enter-vector-embeddings-the-breakthrough)
+   - [Cosine vs Euclidean Distance](#cosine-vs-euclidean-distance-the-critical-choice)
+   - [Real-World Example: YouTube Search](#real-world-example-youtube-search)
+   - [The Storage Question: Why Not SQL/NoSQL?](#the-storage-question-why-not-sqlnosql)
+   - [Where LLMs Use Vector Databases](#where-llms-use-vector-databases)
+   - [The Speed Problem](#the-speed-problem-why-full-scans-are-too-slow)
+   - [The Four Pillars of Fast Vector Search](#the-four-pillars-of-fast-vector-search)
+     - [1. Clustering (IVF)](#1-clustering-ivf---inverted-file-index)
+     - [2. Binary Space Partitioning (KD-Trees)](#2-binary-space-partitioning-kd-trees)
+     - [3. HNSW](#3-hnsw-hierarchical-navigable-small-worlds---the-industry-favorite)
+     - [4. Product Quantization (PQ)](#4-product-quantization-pq---the-compression-master)
+   - [The Hybrid Approach](#the-hybrid-approach-best-of-both-worlds)
+   - [Performance Comparison](#performance-comparison)
+   - [The Big Picture](#the-big-picture)
+   - [Real-World Applications](#real-world-applications-where-these-algorithms-power-your-daily-life)
+   - [What Vector DBs Actually Store](#vector-db-does-not-store-only-the-vectors-embeddings-they-store)
+
+10. [RAG: Retrieval-Augmented Generation](#rag-retrieval-augmented-generation)
+    - [The Core Problem](#the-core-problem-why-llms-are-brilliant-but-broken)
+    - [The Traditional Solution (That Doesn't Work)](#the-traditional-solution-that-doesnt-work)
+    - [Context Feeding](#context-feeding)
+    - [RAG Solution](#rag)
+    - [Phase 1: The Indexing Pipeline](#phase-1-the-indexing-pipeline-done-once)
+    - [Phase 2: The Query Pipeline](#phase-2-the-query-pipeline-every-user-request)
+    - [The RAG Payoff](#the-rag-payoff-why-this-changes-everything)
+    - [Implementation with LangChain](#implementation-with-langchain-code-that-actually-works)
+    - [Handling Follow-up Questions](#handling-follow-up-questions-and-query-enhancement)
+    - [Advanced Considerations](#advanced-considerations)
+    - [Evaluation: Measuring RAG Performance](#evaluation-measuring-rag-performance)
+
+11. [Summary](#summary)
+
+12. [AI Agents: Technical Evolution & Solutions](#ai-agents-technical-evolution--solutions)
+    - [What is an AI Agent?](#what-is-an-ai-agent)
+    - [Problem 1: Tool Calling Fragmentation](#problem-1-tool-calling-fragmentation)
+    - [Solution 1: MCP (Model Context Protocol)](#solution-1-mcp-model-context-protocol)
+    - [Problem 2: Single Agent Complexity Overload](#problem-2-single-agent-complexity-overload)
+    - [Solution 2: A2A Protocol](#solution-2-a2a-protocol-agent-to-agent)
+    - [Context Window](#what-is-context-window)
+
+13. [LangChain & LangGraph](#langchain)
+    - [Installing LangChain](#installing-langchain)
+    - [LangChain](#langchain-1)
+    - [LangGraph](#langgraph)
+    - [Global State in LangGraph](#global-state-in-langgraph)
+    - [LangSmith](#langsmith)
+    - [Zod Validation](#what-zod-does)
+
+14. [Memory Layer in AI Agents](#memory-layer-in-ai-agents)
+    - [The Problem](#the-problem-that-started-it-all)
+    - [Solution: Memory Layer](#solution-memory-layer)
+    - [Types of Memory](#types-of-memory)
+      - [Short-Term Memory (STM)](#1-short-term-memory-stm)
+      - [Long-Term Memory (LTM)](#2-long-term-memory-ltm)
+    - [Types of Long-Term Memory](#types-of-long-term-memory)
+      - [Factual Memory](#a-factual-memory)
+      - [Episodic Memory](#b-episodic-memory)
+      - [Semantic Memory](#c-semantic-memory)
+    - [Knowledge Graph for Semantic Memory](#knowledge-graph-for-semantic-memory)
+    - [Knowledge Graph FAQs](#1-is-knowledge-graph-a-database)
+    - [Example: User Message Processing](#example-user-message-processing)
+    - [What Gets Sent to the LLM?](#what-gets-sent-to-the-llm)
+    - [Memory Strategy Summary](#summary-memory-strategy)
+
+---
+
 # How LLMs Actually Work - A Clear Explanation
 
 ## LLMs Don't Store Exact Answers
