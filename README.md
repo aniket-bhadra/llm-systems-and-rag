@@ -115,7 +115,9 @@
 ## How Your Input Becomes a Response
 
 ---
+![LLM Transformer Architecture — Full Pipeline](llm.jpg)
 
+---
 ## Tokenization — Words to Numbers
 
 Every LLM converts your text into numbers because computers only understand numbers.
