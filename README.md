@@ -98,6 +98,20 @@
     - [What Gets Sent to the LLM?](#what-gets-sent-to-the-llm)
     - [Summary: Memory Strategy](#summary-memory-strategy)
 
+11. [Problems in Vector RAG & Vectorless RAG](#problems-in-vector-rag--vectorless-rag)
+    - [Problems in Vector RAG](#problems-in-vector-rag)
+      - [1. Hard-Coded Blind Chunking](#1-hard-coded-blind-chunking)
+      - [2. Cross-Reference Problem](#2-cross-reference-problem-especially-in-legal-docs)
+      - [3. User Query Dependency Problem](#3-user-query-dependency-problem)
+    - [Vectorless RAG (Page Index / Hierarchical RAG)](#vectorless-rag-called-page-index--hierarchical-rag)
+    - [Indexing Phase](#indexing-phase)
+    - [Tree Structure Example](#tree-structure-example)
+    - [Node Structure](#node-structure-important--your-question)
+    - [Query Phase](#query-phase)
+    - [Answer Generation](#answer-generation)
+    - [Key Difference from Vector RAG](#key-difference-from-vector-rag)
+    - [Limitation](#limitation)
+
 ---
 
 # HOW LLM WORKS?
@@ -2558,7 +2572,7 @@ LLM uses semantic understanding + reasoning to organize content.
 
 ---
 
-## Node Structure (IMPORTANT — your question)
+## Node Structure
 
 Each node contains:
 
@@ -2570,7 +2584,7 @@ Each node contains:
 
 ---
 
-## What these 3 terms mean (core clarification)
+## What these 3 terms mean 
 
 ### nodeId
 
