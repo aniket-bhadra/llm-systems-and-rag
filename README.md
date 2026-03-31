@@ -2481,3 +2481,201 @@ Generally **not sent directly** with every message. Instead:
 **Goal:** Keep context window efficient while maintaining relevant memory! 
 
 ---
+
+## Problems in vector RAG
+
+### 1. Hard-coded blind chunking
+
+Even if we use overlapping while chunking, it is still possible that context is lost.
+
+Example:
+A paragraph describing why Snape is a grey character:
+
+Chunk size = 1000 characters, overlap = 200
+
+First chunk takes ~800 characters of that paragraph
+Remaining 200 characters come from overlap (previous chunk), not the continuation
+
+So this chunk misses the remaining 40% of the paragraph, where the actual explanation exists → context loss still happens even with overlap
+
+---
+
+### 2. Cross-reference problem (especially in legal docs)
+
+Example:
+
+Page 4: “as per rule 64.7A”
+Actual definition is on page 256
+
+Similarity search:
+Picks page 4 due to keyword match
+Likely misses page 256 → important referenced context lost
+
+---
+
+### 3. User query dependency problem
+
+Vector similarity search heavily depends on how the user phrases the query.
+
+If the PDF has complex wording
+User asks in high-level or different wording (same meaning, different terms)
+Or slightly misphrased query
+
+→ Embedding similarity may fail → wrong chunks retrieved
+
+---
+
+## Vectorless RAG (called Page Index / Hierarchical RAG)
+
+Same phases: Indexing + Query
+
+---
+
+## Indexing Phase
+
+Pipeline:
+Document → Hierarchical Index Tree → Reasoning-based retrieval → Answer
+
+We give the document to the LLM and ask it to:
+Generate structured sections (headings)
+
+Build a tree structure where:
+Each section = node
+Related sub-sections = child nodes
+
+---
+
+## Tree Structure Example
+
+Root node: Harry Potter series summary
+
+Level 1 nodes: Philosopher’s Stone, Chamber of Secrets, etc.
+
+Level 2 nodes: subtopics under each book
+
+This is not chunking —
+LLM uses semantic understanding + reasoning to organize content.
+
+---
+
+## Node Structure (IMPORTANT — your question)
+
+Each node contains:
+
+* title → section heading
+* nodeId → unique identifier of the node
+* startIndex, endIndex → exact span in original document
+* summary → condensed meaning of that section
+* childNodes → pointers to sub-sections
+
+---
+
+## What these 3 terms mean (core clarification)
+
+### nodeId
+
+Unique ID for each node in the tree
+
+Used for:
+
+* traversal
+* referencing nodes
+* linking parent ↔ child
+
+Does NOT contain content
+It is just an identifier (like a pointer/ID)
+
+---
+
+### startIndex & endIndex
+
+These represent positions in the original document
+
+Typically:
+character offset OR token offset
+
+Example:
+startIndex = 1200
+endIndex = 1800
+
+→ This node corresponds to original content from position 1200 → 1800 in the document
+
+---
+
+### Why they are important
+
+Allow going back to exact original content (no loss)
+
+Enable:
+
+* precise retrieval
+* grounding answers in real data
+
+Unlike vector RAG → no approximation via embeddings
+
+---
+
+## Query Phase
+
+User asks:
+“Why did Snape kill Dumbledore?”
+
+Steps:
+
+LLM takes query
+
+Performs tree traversal (reasoning-based not keyword based)
+
+Finds relevant nodes by:
+
+* matching meaning (not keywords)
+* understanding hierarchy
+
+---
+
+## Traversal behavior
+
+If a node is irrelevant → skip entire subtree
+
+Move only through relevant branches
+
+→ Result: subset of tree (highly relevant nodes)
+
+LLM does not execute tree traversal like a normal algorithm (no pointers, recursion, or actual computation). Since it doesn’t have that kind of program execution ability, it simulates traversal through reasoning — by reading node summaries and selecting relevant branches based on the user query.
+
+---
+
+## Answer Generation
+
+Two options:
+
+* Use node summaries
+* Or use startIndex/endIndex → fetch original content → generate answer
+
+---
+
+## Key Difference from Vector RAG
+
+No chunking
+No embeddings
+No similarity search
+
+Everything is:
+
+* built by LLM (indexing)
+* retrieved by LLM (reasoning traversal)
+
+---
+
+## Limitation
+
+Requires reasoning models (costly)
+
+Slower due to:
+
+* tree traversal
+* reasoning steps
+
+But:
+→ higher accuracy + better context preservation
+---
